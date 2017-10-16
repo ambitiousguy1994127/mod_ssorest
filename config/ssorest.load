@@ -1,0 +1,2 @@
+# SSO/Rest Plugin
+LoadModule ssorest_module modules/mod_ssorest.so

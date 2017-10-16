@@ -1,0 +1,7 @@
+*.os
+*.o
+*.so
+
+.sconsign.dblite
+.kdev4
+

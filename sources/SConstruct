@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import sys
+import os
+import platform
+
+outputFileNameSuffix = ''
+
+environment = Environment()
+if not environment.GetOption('clean'):
+
+    platform = sys.platform
+    if platform == "linux2":
+        svnversion = os.popen('svnversion -n .', 'r')
+        svnversion = svnversion.readline().strip()
+        svnversion = svnversion[svnversion.rfind(':') + 1:]
+        svnversion.replace('M', '')
+        try :
+            svnversion = int(svnversion)
+        except:
+            svnversion = ""
+        
+        Export('svnversion')
+
+        flags = '-O2 --std=gnu++11 -Wall -rdynamic -fpermissive -fPIC -D\'MOD_VER=\"0.8.7\"\' -D\'SVN_REV=\"%s\"\'' %svnversion
+        includePaths = ["/usr/include/apache2", "/usr/include/httpd", "/usr/include/apr-1.0", "/usr/include/apr-1"]
+        libraries = ['pthread', 'jsoncpp', 'curl']
+        environment = Environment(LIBS=libraries, CPPFLAGS=flags, CPPPATH=includePaths) 
+
+    elif platform == "win32":
+
+        flags = '/EHsc /LD /W3 /O2 /D WIN32'
+        includePaths = ["..\\3rd-party\\windows\\apache\\include",
+                        "..\\3rd-party\\windows\\curl\\include", 
+                        "..\\3rd-party\\windows\\jsoncpp\\include"]
+
+        libraries = None
+        targetArchitecture = ARGUMENTS.get('arch', '')
+        if  targetArchitecture == 'amd64':
+            libraries = [File('../3rd-party/windows/apache/lib64/apr-1.lib'),
+                         File('../3rd-party/windows/apache/lib64/aprutil-1.lib'),
+                         File('../3rd-party/windows/apache/lib64/libapr-1.lib'),
+                         File('../3rd-party/windows/apache/lib64/libapriconv-1.lib'),
+                         File('../3rd-party/windows/apache/lib64/libaprutil-1.lib'),
+                         File('../3rd-party/windows/apache/lib64/libhttpd.lib'),
+                         File('../3rd-party/windows/apache/lib64/mod_dav.lib'),
+                         File('../3rd-party/windows/apache/lib64/xml.lib'),
+                         File('../3rd-party/windows/curl/lib64/libcurl.lib'),
+                         File('../3rd-party/windows/jsoncpp/lib/json_vc71_libmt_x64.lib')]
+        elif targetArchitecture == 'x86':
+            libraries = [File('../3rd-party/windows/apache/lib32/apr-1.lib'),
+                         File('../3rd-party/windows/apache/lib32/aprutil-1.lib'),
+                         File('../3rd-party/windows/apache/lib32/libapr-1.lib'),
+                         File('../3rd-party/windows/apache/lib32/libapriconv-1.lib'),
+                         File('../3rd-party/windows/apache/lib32/libaprutil-1.lib'),
+                         File('../3rd-party/windows/apache/lib32/libhttpd.lib'),
+                         File('../3rd-party/windows/apache/lib32/mod_dav.lib'),
+                         File('../3rd-party/windows/apache/lib32/xml.lib'),
+                         File('../3rd-party/windows/curl/lib32/libcurl.lib'),
+                         File('../3rd-party/windows/jsoncpp/lib/json_vc71_libmt_x86.lib')]
+        else:
+            print('Specify target architecture as an argument:')
+            print(' scons -Q arch=[x86|amd64]')
+            sys.exit(1)
+
+        outputFileNameSuffix = '-' + targetArchitecture
+        environment = Environment(LIBS=libraries, CPPFLAGS=flags, CPPPATH=includePaths, TARGET_ARCH=targetArchitecture) 
+
+    else:
+        print "Platform '" + platform + "' is not supported"
+        sys.exit(1)
+    	
+sources = [ 'Base64.cpp',
+            'URI.cpp',
+            'RandomSequence.cpp',
+            'Cryptography/Cryptor.cpp',
+            'Cryptography/HMAC_SHA1.cpp',
+            'Cryptography/SHA1.cpp',
+            'CurlWrapper.cpp',
+            'StringProcessor.cpp',
+            'RequestHeaderWrapper.cpp',
+            'TypesConverter.cpp',
+            'GatewayRequest.cpp',
+            'GatewayResponse.cpp',
+            'SSORestPlugin.cpp',
+            'SSORestPluginPool.cpp',
+            'mod_ssorest.cpp']
+
+environment['STATIC_AND_SHARED_OBJECTS_ARE_THE_SAME'] = 1
+environment.Replace(SHLIBPREFIX = '')
+environment.SharedLibrary(target='mod_ssorest' + outputFileNameSuffix, source=sources)
